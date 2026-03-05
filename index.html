@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snake Game</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:#020617;
+color:white;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+overflow:hidden;
+}
+
+/* animated stars */
+
+body::before{
+content:"";
+position:fixed;
+width:100%;
+height:100%;
+background:
+radial-gradient(white 1px, transparent 1px),
+radial-gradient(white 1px, transparent 1px);
+background-size:40px 40px;
+animation:stars 40s linear infinite;
+opacity:0.2;
+}
+
+@keyframes stars{
+from{transform:translateY(0)}
+to{transform:translateY(-2000px)}
+}
+
+#startScreen{
+text-align:center;
+}
+
+#playBtn{
+background:#22c55e;
+border:none;
+padding:12px 30px;
+font-size:20px;
+border-radius:10px;
+cursor:pointer;
+}
+
+#gameContainer{
+display:none;
+text-align:center;
+}
+
+canvas{
+background:#020617;
+border:3px solid #22c55e;
+box-shadow:0 0 20px #22c55e;
+}
+
+#score{
+font-size:22px;
+margin-bottom:5px;
+}
+
+#highScore{
+font-size:16px;
+margin-bottom:10px;
+color:#94a3b8;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="startScreen">
+<h1>🐍 Snake Game</h1>
+<button id="playBtn">Play</button>
+</div>
+
+<div id="gameContainer">
+
+<div id="score">Score: 0</div>
+<div id="highScore"></div>
+
+<canvas id="game" width="320" height="320"></canvas>
+
+</div>
+
+<script>
+
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+const grid=16;
+
+let snake;
+let dx;
+let dy;
+let food;
+let score;
+let running=false;
+
+let particles=[];
+
+const eatSound=new Audio("https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3");
+const music=new Audio("https://assets.mixkit.co/music/preview/mixkit-game-level-music-689.mp3");
+
+music.loop=true;
+music.volume=0.3;
+
+let highScore=localStorage.getItem("snakeHigh") || 0;
+
+document.getElementById("highScore").innerText="High Score: "+highScore;
+
+document.getElementById("playBtn").onclick=startGame;
+
+function startGame(){
+
+document.getElementById("startScreen").style.display="none";
+document.getElementById("gameContainer").style.display="block";
+
+music.play();
+
+snake=[{x:160,y:160}];
+dx=grid;
+dy=0;
+
+food=randomFood();
+
+score=0;
+
+running=true;
+
+requestAnimationFrame(loop);
+
+}
+
+function randomFood(){
+
+return{
+
+x:Math.floor(Math.random()*20)*grid,
+y:Math.floor(Math.random()*20)*grid
+
+};
+
+}
+
+let count=0;
+
+function loop(){
+
+if(!running)return;
+
+requestAnimationFrame(loop);
+
+if(++count<6)return;
+count=0;
+
+update();
+draw();
+
+}
+
+function update(){
+
+let head={x:snake[0].x+dx,y:snake[0].y+dy};
+
+snake.unshift(head);
+
+if(head.x===food.x && head.y===food.y){
+
+score++;
+
+document.getElementById("score").innerText="Score: "+score;
+
+eatSound.play();
+
+createParticles(food.x+8,food.y+8);
+
+food=randomFood();
+
+}else{
+
+snake.pop();
+
+}
+
+if(head.x<0||head.x>=canvas.width||head.y<0||head.y>=canvas.height)gameOver();
+
+for(let i=1;i<snake.length;i++){
+
+if(head.x===snake[i].x && head.y===snake[i].y)gameOver();
+
+}
+
+}
+
+function draw(){
+
+ctx.fillStyle="#020617";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+snake.forEach((part,i)=>{
+
+ctx.fillStyle=i===0?"#4ade80":"#22c55e";
+
+ctx.shadowColor="#22c55e";
+ctx.shadowBlur=10;
+
+ctx.fillRect(part.x,part.y,grid-2,grid-2);
+
+});
+
+ctx.shadowBlur=0;
+
+/* apple pulse */
+
+let pulse=6+Math.sin(Date.now()/150)*2;
+
+ctx.fillStyle="red";
+
+ctx.beginPath();
+ctx.arc(food.x+8,food.y+8,pulse,0,Math.PI*2);
+ctx.fill();
+
+/* particles */
+
+particles.forEach((p,i)=>{
+
+ctx.fillStyle="orange";
+ctx.fillRect(p.x,p.y,4,4);
+
+p.x+=p.vx;
+p.y+=p.vy;
+p.life--;
+
+if(p.life<=0)particles.splice(i,1);
+
+});
+
+}
+
+function createParticles(x,y){
+
+for(let i=0;i<15;i++){
+
+particles.push({
+
+x:x,
+y:y,
+vx:(Math.random()-0.5)*4,
+vy:(Math.random()-0.5)*4,
+life:20
+
+});
+
+}
+
+}
+
+function gameOver(){
+
+running=false;
+
+music.pause();
+
+if(score>highScore){
+
+localStorage.setItem("snakeHigh",score);
+
+}
+
+alert("Game Over! Score: "+score);
+
+location.reload();
+
+}
+
+/* keyboard controls */
+
+document.addEventListener("keydown",e=>{
+
+if(e.key==="ArrowUp" && dy===0){dx=0;dy=-grid;}
+else if(e.key==="ArrowDown" && dy===0){dx=0;dy=grid;}
+else if(e.key==="ArrowLeft" && dx===0){dx=-grid;dy=0;}
+else if(e.key==="ArrowRight" && dx===0){dx=grid;dy=0;}
+
+});
+
+/* swipe controls */
+
+let startX,startY;
+
+canvas.addEventListener("touchstart",e=>{
+
+startX=e.touches[0].clientX;
+startY=e.touches[0].clientY;
+
+});
+
+canvas.addEventListener("touchend",e=>{
+
+let dxTouch=e.changedTouches[0].clientX-startX;
+let dyTouch=e.changedTouches[0].clientY-startY;
+
+if(Math.abs(dxTouch)>Math.abs(dyTouch)){
+
+if(dxTouch>0 && dx===0){dx=grid;dy=0;}
+else if(dxTouch<0 && dx===0){dx=-grid;dy=0;}
+
+}else{
+
+if(dyTouch>0 && dy===0){dx=0;dy=grid;}
+else if(dyTouch<0 && dy===0){dx=0;dy=-grid;}
+
+}
+
+});
+
+</script>
+
+</body>
+</html>
