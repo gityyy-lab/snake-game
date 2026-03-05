@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Snake Game</title>
+<title>Realistic Snake Game</title>
 
 <style>
 
@@ -19,7 +18,7 @@ height:100vh;
 overflow:hidden;
 }
 
-/* animated stars */
+/* animated star background */
 
 body::before{
 content:"";
@@ -89,7 +88,7 @@ color:#94a3b8;
 <div id="score">Score: 0</div>
 <div id="highScore"></div>
 
-<canvas id="game" width="320" height="320"></canvas>
+<canvas id="game" width="400" height="400"></canvas>
 
 </div>
 
@@ -98,26 +97,26 @@ color:#94a3b8;
 const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 
-const grid=16;
+let snake=[{x:200,y:200}];
+let dx=2;
+let dy=0;
 
-let snake;
-let dx;
-let dy;
-let food;
-let score;
+let food=randomFood();
+
+let score=0;
 let running=false;
 
 let particles=[];
 
-const eatSound=new Audio("https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3");
-const music=new Audio("https://assets.mixkit.co/music/preview/mixkit-game-level-music-689.mp3");
-
-music.loop=true;
-music.volume=0.3;
-
 let highScore=localStorage.getItem("snakeHigh") || 0;
 
 document.getElementById("highScore").innerText="High Score: "+highScore;
+
+const eatSound=new Audio("https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3");
+
+const music=new Audio("https://assets.mixkit.co/music/preview/mixkit-game-level-music-689.mp3");
+music.loop=true;
+music.volume=0.3;
 
 document.getElementById("playBtn").onclick=startGame;
 
@@ -126,17 +125,17 @@ function startGame(){
 document.getElementById("startScreen").style.display="none";
 document.getElementById("gameContainer").style.display="block";
 
-music.play();
-
-snake=[{x:160,y:160}];
-dx=grid;
+snake=[{x:200,y:200}];
+dx=2;
 dy=0;
-
-food=randomFood();
 
 score=0;
 
+food=randomFood();
+
 running=true;
+
+music.play();
 
 requestAnimationFrame(loop);
 
@@ -146,36 +145,36 @@ function randomFood(){
 
 return{
 
-x:Math.floor(Math.random()*20)*grid,
-y:Math.floor(Math.random()*20)*grid
+x:Math.random()*360+20,
+y:Math.random()*360+20
 
 };
 
 }
 
-let count=0;
-
 function loop(){
 
 if(!running)return;
 
-requestAnimationFrame(loop);
-
-if(++count<6)return;
-count=0;
-
 update();
 draw();
+
+requestAnimationFrame(loop);
 
 }
 
 function update(){
 
-let head={x:snake[0].x+dx,y:snake[0].y+dy};
+let head={
+x:snake[0].x+dx,
+y:snake[0].y+dy
+};
 
 snake.unshift(head);
 
-if(head.x===food.x && head.y===food.y){
+/* check apple */
+
+if(Math.hypot(head.x-food.x, head.y-food.y)<12){
 
 score++;
 
@@ -183,7 +182,7 @@ document.getElementById("score").innerText="Score: "+score;
 
 eatSound.play();
 
-createParticles(food.x+8,food.y+8);
+createParticles(food.x,food.y);
 
 food=randomFood();
 
@@ -193,11 +192,23 @@ snake.pop();
 
 }
 
-if(head.x<0||head.x>=canvas.width||head.y<0||head.y>=canvas.height)gameOver();
+/* wall collision */
+
+if(head.x<0||head.x>400||head.y<0||head.y>400){
+
+gameOver();
+
+}
+
+/* self collision */
 
 for(let i=1;i<snake.length;i++){
 
-if(head.x===snake[i].x && head.y===snake[i].y)gameOver();
+if(Math.hypot(head.x-snake[i].x, head.y-snake[i].y)<10){
+
+gameOver();
+
+}
 
 }
 
@@ -206,29 +217,49 @@ if(head.x===snake[i].x && head.y===snake[i].y)gameOver();
 function draw(){
 
 ctx.fillStyle="#020617";
-ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.fillRect(0,0,400,400);
+
+/* draw snake */
 
 snake.forEach((part,i)=>{
 
 ctx.fillStyle=i===0?"#4ade80":"#22c55e";
 
-ctx.shadowColor="#22c55e";
-ctx.shadowBlur=10;
+ctx.beginPath();
+ctx.arc(part.x,part.y,8,0,Math.PI*2);
+ctx.fill();
 
-ctx.fillRect(part.x,part.y,grid-2,grid-2);
+/* eyes */
+
+if(i===0){
+
+ctx.fillStyle="white";
+
+ctx.beginPath();
+ctx.arc(part.x-3,part.y-3,2,0,Math.PI*2);
+ctx.arc(part.x+3,part.y-3,2,0,Math.PI*2);
+ctx.fill();
+
+}
 
 });
 
-ctx.shadowBlur=0;
-
 /* apple pulse */
 
-let pulse=6+Math.sin(Date.now()/150)*2;
+let pulse=8+Math.sin(Date.now()/150)*2;
 
 ctx.fillStyle="red";
 
 ctx.beginPath();
-ctx.arc(food.x+8,food.y+8,pulse,0,Math.PI*2);
+ctx.arc(food.x,food.y,pulse,0,Math.PI*2);
+ctx.fill();
+
+/* apple leaf */
+
+ctx.fillStyle="green";
+
+ctx.beginPath();
+ctx.ellipse(food.x+5,food.y-8,3,6,Math.PI/4,0,Math.PI*2);
 ctx.fill();
 
 /* particles */
@@ -288,10 +319,10 @@ location.reload();
 
 document.addEventListener("keydown",e=>{
 
-if(e.key==="ArrowUp" && dy===0){dx=0;dy=-grid;}
-else if(e.key==="ArrowDown" && dy===0){dx=0;dy=grid;}
-else if(e.key==="ArrowLeft" && dx===0){dx=-grid;dy=0;}
-else if(e.key==="ArrowRight" && dx===0){dx=grid;dy=0;}
+if(e.key==="ArrowUp"){dx=0;dy=-2;}
+if(e.key==="ArrowDown"){dx=0;dy=2;}
+if(e.key==="ArrowLeft"){dx=-2;dy=0;}
+if(e.key==="ArrowRight"){dx=2;dy=0;}
 
 });
 
@@ -313,13 +344,13 @@ let dyTouch=e.changedTouches[0].clientY-startY;
 
 if(Math.abs(dxTouch)>Math.abs(dyTouch)){
 
-if(dxTouch>0 && dx===0){dx=grid;dy=0;}
-else if(dxTouch<0 && dx===0){dx=-grid;dy=0;}
+if(dxTouch>0){dx=2;dy=0;}
+else{dx=-2;dy=0;}
 
 }else{
 
-if(dyTouch>0 && dy===0){dx=0;dy=grid;}
-else if(dyTouch<0 && dy===0){dx=0;dy=-grid;}
+if(dyTouch>0){dx=0;dy=2;}
+else{dx=0;dy=-2;}
 
 }
 
