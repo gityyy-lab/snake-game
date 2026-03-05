@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Realistic Snake Game</title>
+<title>Snake Game</title>
 
 <style>
 
@@ -62,17 +63,6 @@ border:3px solid #22c55e;
 box-shadow:0 0 20px #22c55e;
 }
 
-#score{
-font-size:22px;
-margin-bottom:5px;
-}
-
-#highScore{
-font-size:16px;
-margin-bottom:10px;
-color:#94a3b8;
-}
-
 </style>
 </head>
 
@@ -84,12 +74,7 @@ color:#94a3b8;
 </div>
 
 <div id="gameContainer">
-
-<div id="score">Score: 0</div>
-<div id="highScore"></div>
-
 <canvas id="game" width="400" height="400"></canvas>
-
 </div>
 
 <script>
@@ -98,6 +83,8 @@ const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 
 let snake=[{x:200,y:200}];
+let snakeLength=5;
+
 let dx=2;
 let dy=0;
 
@@ -106,15 +93,9 @@ let food=randomFood();
 let score=0;
 let running=false;
 
-let particles=[];
-
-let highScore=localStorage.getItem("snakeHigh") || 0;
-
-document.getElementById("highScore").innerText="High Score: "+highScore;
-
 const eatSound=new Audio("https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3");
-
 const music=new Audio("https://assets.mixkit.co/music/preview/mixkit-game-level-music-689.mp3");
+
 music.loop=true;
 music.volume=0.3;
 
@@ -126,6 +107,8 @@ document.getElementById("startScreen").style.display="none";
 document.getElementById("gameContainer").style.display="block";
 
 snake=[{x:200,y:200}];
+snakeLength=5;
+
 dx=2;
 dy=0;
 
@@ -144,10 +127,8 @@ requestAnimationFrame(loop);
 function randomFood(){
 
 return{
-
 x:Math.random()*360+20,
 y:Math.random()*360+20
-
 };
 
 }
@@ -172,44 +153,37 @@ y:snake[0].y+dy
 
 snake.unshift(head);
 
-/* check apple */
+/* apple collision */
 
 if(Math.hypot(head.x-food.x, head.y-food.y)<12){
 
 score++;
-
-document.getElementById("score").innerText="Score: "+score;
+snakeLength++;
 
 eatSound.play();
 
-createParticles(food.x,food.y);
-
 food=randomFood();
 
-}else{
+}
 
+/* maintain snake size */
+
+while(snake.length>snakeLength){
 snake.pop();
-
 }
 
 /* wall collision */
 
 if(head.x<0||head.x>400||head.y<0||head.y>400){
-
 gameOver();
-
 }
 
 /* self collision */
 
 for(let i=1;i<snake.length;i++){
-
-if(Math.hypot(head.x-snake[i].x, head.y-snake[i].y)<10){
-
+if(Math.hypot(head.x-snake[i].x, head.y-snake[i].y)<8){
 gameOver();
-
 }
-
 }
 
 }
@@ -262,39 +236,6 @@ ctx.beginPath();
 ctx.ellipse(food.x+5,food.y-8,3,6,Math.PI/4,0,Math.PI*2);
 ctx.fill();
 
-/* particles */
-
-particles.forEach((p,i)=>{
-
-ctx.fillStyle="orange";
-ctx.fillRect(p.x,p.y,4,4);
-
-p.x+=p.vx;
-p.y+=p.vy;
-p.life--;
-
-if(p.life<=0)particles.splice(i,1);
-
-});
-
-}
-
-function createParticles(x,y){
-
-for(let i=0;i<15;i++){
-
-particles.push({
-
-x:x,
-y:y,
-vx:(Math.random()-0.5)*4,
-vy:(Math.random()-0.5)*4,
-life:20
-
-});
-
-}
-
 }
 
 function gameOver(){
@@ -303,13 +244,7 @@ running=false;
 
 music.pause();
 
-if(score>highScore){
-
-localStorage.setItem("snakeHigh",score);
-
-}
-
-alert("Game Over! Score: "+score);
+alert("Game Over!\n\nApples eaten: "+score);
 
 location.reload();
 
@@ -331,10 +266,8 @@ if(e.key==="ArrowRight"){dx=2;dy=0;}
 let startX,startY;
 
 canvas.addEventListener("touchstart",e=>{
-
 startX=e.touches[0].clientX;
 startY=e.touches[0].clientY;
-
 });
 
 canvas.addEventListener("touchend",e=>{
